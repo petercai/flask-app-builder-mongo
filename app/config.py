@@ -27,7 +27,7 @@ class Config(object):
     DB_PASS     = os.getenv('DB_PASS'     , None)
     DB_HOST     = os.getenv('DB_HOST'     , 'localhost')
     DB_PORT     = os.getenv('DB_PORT'     , 27017)
-    DB_NAME     = os.getenv('DB_NAME'     , 'accp')
+    DB_NAME     = os.getenv('DB_NAME'     , 'portal')
 
     MONGODB_SETTINGS = {
             "db": DB_NAME,
