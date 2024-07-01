@@ -12,24 +12,46 @@ from flask_pymongo import PyMongo
 logging.basicConfig(format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 logging.getLogger().setLevel(logging.DEBUG)
 
-app = Flask(__name__)
-app.config.from_object('config')
-db = MongoEngine(app)
-appbuilder = AppBuilder(app, security_manager_class=SecurityManager)
+# app = Flask(__name__)
+# app.config.from_object('config')
+db = MongoEngine()
+appbuilder = AppBuilder(security_manager_class=SecurityManager)
 
 
-"""
-from sqlalchemy.engine import Engine
-from sqlalchemy import event
 
-#Only include this for SQLLite constraints
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    # Will force sqllite contraint foreign keys
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-"""    
+def register_extensions(app):
+    db.init_app(app)
+    appbuilder.init_app(app, session=None)
+    # login_manager.init_app(app)
 
-from app import views
+
+
+def register_blueprints(app):
+    # for module_name in ('authentication', 'accp', 'home', 'api'):
+    #     module = import_module('apps.{}.routes'.format(module_name))
+    #     app.register_blueprint(module.blueprint)
+    pass
+
+
+def create_app(config):
+    app = Flask(__name__)
+    app.config.from_object(config)
+    # app.config["MONGODB_SETTINGS"] = [
+    #     {
+    #         "db": "accp",
+    #         "host": "localhost",
+    #         "port": 27017,
+    #         "alias": "default",
+    #     }
+    # ]
+    register_extensions(app)
+    register_blueprints(app)
+
+    # app.register_blueprint(github_blueprint, url_prefix="/login") 
+    
+    # configure_database(app)
+    return app
+   
+
+# from app import views
 
