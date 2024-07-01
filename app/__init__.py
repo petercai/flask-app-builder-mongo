@@ -3,6 +3,7 @@ from flask import Flask
 from flask_appbuilder.security.mongoengine.manager import SecurityManager
 from flask_appbuilder import AppBuilder
 from flask_mongoengine import MongoEngine
+from flask_pymongo import PyMongo
 
 """
  Logging configuration
