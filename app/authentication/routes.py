@@ -16,32 +16,19 @@ from flask_login import (
     logout_user
 )
 
-from flask_dance.contrib.github import github
-
 from app import db, login_manager
 from app.authentication import blueprint
 from app.authentication.forms import LoginForm, CreateAccountForm
-from app.authentication.models import Users
+from app.authentication.models import User
 
 from app.authentication.util import verify_pass, generate_token
 
-# Bind API -> Auth BP
-api = Api(blueprint)
 
 @blueprint.route('/')
 def route_default():
     return redirect(url_for('authentication_blueprint.login'))
 
-# Login & Registration
 
-@blueprint.route("/github")
-def login_github():
-    """ Github login """
-    if not github.authorized:
-        return redirect(url_for("github.login"))
-
-    res = github.get("/user")
-    return redirect(url_for('home_blueprint.index'))
 
 @blueprint.route('/login', methods=['GET', 'POST'])
 def login():
@@ -56,7 +43,7 @@ def login():
         #return 'Login: ' + username + ' / ' + password
 
         # Locate user
-        user = Users.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username).first()
 
         # Check the password
         if user and verify_pass(password, user.password):
@@ -84,7 +71,7 @@ def register():
         email = request.form['email']
 
         # Check usename exists
-        user = Users.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username).first()
         if user:
             return render_template('accounts/register.html',
                                    msg='Username already registered',
@@ -92,7 +79,7 @@ def register():
                                    form=create_account_form)
 
         # Check email exists
-        user = Users.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
         if user:
             return render_template('accounts/register.html',
                                    msg='Email already registered',
@@ -100,7 +87,7 @@ def register():
                                    form=create_account_form)
 
         # else we can create the user
-        user = Users(**request.form)
+        user = User(**request.form)
         db.session.add(user)
         db.session.commit()
 
@@ -115,54 +102,7 @@ def register():
     else:
         return render_template('accounts/register.html', form=create_account_form)
 
-@api.route('/login/jwt/', methods=['POST'])
-class JWTLogin(Resource):
-    def post(self):
-        try:
-            data = request.form
 
-            if not data:
-                data = request.json
-
-            if not data:
-                return {
-                           'message': 'username or password is missing',
-                           "data": None,
-                           'success': False
-                       }, 400
-            # validate input
-            user = Users.query.filter_by(username=data.get('username')).first()
-            if user and verify_pass(data.get('password'), user.password):
-                try:
-
-                    # Empty or null Token
-                    if not user.api_token or user.api_token == '':
-                        user.api_token = generate_token(user.id)
-                        user.api_token_ts = int(datetime.utcnow().timestamp())
-                        db.session.commit()
-
-                    # token should expire after 24 hrs
-                    return {
-                        "message": "Successfully fetched auth token",
-                        "success": True,
-                        "data": user.api_token
-                    }
-                except Exception as e:
-                    return {
-                               "error": "Something went wrong",
-                               "success": False,
-                               "message": str(e)
-                           }, 500
-            return {
-                       'message': 'username or password is wrong',
-                       'success': False
-                   }, 403
-        except Exception as e:
-            return {
-                       "error": "Something went wrong",
-                       "success": False,
-                       "message": str(e)
-                   }, 500
 
 
 @blueprint.route('/logout')

@@ -1,61 +1,132 @@
-# -*- encoding: utf-8 -*-
-"""
-Copyright (c) 2019 - present AppSeed.us
-"""
+import datetime
 
-from flask_login import UserMixin
+from flask import g
+from mongoengine import (
+    BooleanField,
+    DateTimeField,
+    Document,
+    IntField,
+    ListField,
+    ReferenceField,
+    StringField,
+)
 
-from sqlalchemy.orm import relationship
-from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
+from app import login_manager
 
-from app import db, login_manager
 
-from app.authentication.util import hash_pass
+def get_user_id():
+    try:
+        return g.user.id
+    except Exception:
+        return None
 
-class Users(db.Model, UserMixin):
 
-    __tablename__ = 'Users'
+class Permission(Document):
+    name = StringField(max_length=100, required=True, unique=True)
 
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(64), unique=True)
-    email         = db.Column(db.String(64), unique=True)
-    password      = db.Column(db.LargeBinary)
+    def __unicode__(self):
+        return self.name
 
-    oauth_github  = db.Column(db.String(100), nullable=True)
 
-    api_token     = db.Column(db.String(100))
-    api_token_ts  = db.Column(db.Integer)    
+class ViewMenu(Document):
+    name = StringField(max_length=100, required=True, unique=True)
 
-    def __init__(self, **kwargs):
-        for property, value in kwargs.items():
-            # depending on whether value is an iterable or not, we must
-            # unpack it's value (when **kwargs is request.form, some values
-            # will be a 1-element list)
-            if hasattr(value, '__iter__') and not isinstance(value, str):
-                # the ,= unpack of a singleton fails PEP8 (travis flake8 test)
-                value = value[0]
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)) and (self.name == other.name)
 
-            if property == 'password':
-                value = hash_pass(value)  # we need bytes here (not plain str)
+    def __neq__(self, other):
+        return self.name != other.name
 
-            setattr(self, property, value)
+    def __unicode__(self):
+        return self.name
+
+
+class PermissionView(Document):
+    permission = ReferenceField(Permission)
+    view_menu = ReferenceField(ViewMenu)
+
+    def __unicode__(self):
+        return str(self.permission).replace("_", " ") + " on " + str(self.view_menu)
 
     def __repr__(self):
-        return str(self.username)
+        return str(self.permission).replace("_", " ") + " on " + str(self.view_menu)
+
+
+class Role(Document):
+    meta = {
+        "allow_inheritance": True
+    }  # Added for role extension via mongoengine Document inheritance
+
+    name = StringField(max_length=64, required=True, unique=True)
+    permissions = ListField(ReferenceField(PermissionView))
+
+    def __unicode__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+
+class User(Document):
+    meta = {
+        "allow_inheritance": True
+    }  # Added for user extension via Mongoengine Document inheritance
+
+    first_name = StringField(max_length=64, required=True)
+    last_name = StringField(max_length=64, required=True)
+    username = StringField(max_length=64, required=True, unique=True)
+    password = StringField(max_length=256)
+    active = BooleanField()
+    email = StringField(max_length=320, required=True, unique=True)
+    last_login = DateTimeField()
+    login_count = IntField()
+    fail_login_count = IntField()
+    roles = ListField(ReferenceField(Role))
+    created_on = DateTimeField(default=datetime.datetime.now)
+    changed_on = DateTimeField(default=datetime.datetime.now)
+
+    created_by = ReferenceField("self", default=get_user_id())
+    changed_by = ReferenceField("self", default=get_user_id())
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return self.active
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.id
+
+    def get_full_name(self):
+        return "{0} {1}".format(self.first_name, self.last_name)
+
+    def __unicode__(self):
+        return self.get_full_name()
+
+
+class RegisterUser(Document):
+    first_name = StringField(max_length=64, required=True)
+    last_name = StringField(max_length=64, required=True)
+    username = StringField(max_length=64, required=True, unique=True)
+    password = StringField(max_length=256)
+    email = StringField(max_length=64, required=True)
+    registration_date = DateTimeField(default=datetime.datetime.now)
+    registration_hash = StringField(max_length=256)
 
 
 @login_manager.user_loader
 def user_loader(id):
-    return Users.query.filter_by(id=id).first()
+    return User.objexts(id=id).first()
 
 
 @login_manager.request_loader
 def request_loader(request):
     username = request.form.get('username')
-    user = Users.query.filter_by(username=username).first()
+    user = User.objects(username=username).first()
     return user if user else None
-
-class OAuth(OAuthConsumerMixin, db.Model):
-    user_id = db.Column(db.Integer, db.ForeignKey("Users.id", ondelete="cascade"), nullable=False)
-    user = db.relationship(Users)
-    
