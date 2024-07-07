@@ -1,7 +1,10 @@
 import logging
+from importlib import import_module
+
 from flask import Flask
 from flask_appbuilder.security.mongoengine.manager import SecurityManager
 from flask_appbuilder import AppBuilder
+from flask_login import LoginManager
 from flask_mongoengine import MongoEngine
 from flask_pymongo import PyMongo
 
@@ -14,7 +17,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 db = MongoEngine()
 appbuilder = AppBuilder(security_manager_class=SecurityManager)
-
+# login_manager = LoginManager()
 
 
 def register_extensions(app):
@@ -26,8 +29,9 @@ def register_extensions(app):
 
 def register_blueprints(app):
     # for module_name in ('authentication', 'home'):
-    #     module = import_module('apps.{}.routes'.format(module_name))
-    #     app.register_blueprint(module.blueprint)
+    for module_name in ['home']:
+        module = import_module('app.{}.routes'.format(module_name))
+        app.register_blueprint(module.blueprint)
     pass
 
 
