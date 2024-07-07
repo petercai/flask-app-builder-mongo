@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 from flask_mongoengine import MongoEngine
 
-from app.accp.models import Application
+from app.pipeline.models import Application
 
 
 # from .models import Application

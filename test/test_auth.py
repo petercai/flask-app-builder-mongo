@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 from flask_mongoengine import MongoEngine
 
-from app.accp.models import Application, Environment, Deployment
+from app.authentication.models import User
 
 
 # from .models import Application
@@ -46,10 +46,12 @@ def test_read_application(mongo_connection):
     # Assert the data is correct
     assert len(all_apps) == 13
 
-def test_read_envs(mongo_connection):
-    envs = Environment.objects.distinct("env")
-    for env in envs:
-        print(env)
+def test_User(mongo_connection):
+    users = User.objects.all()
+    for user in users:
+        print(user.__dict__)
+
+
 
 def test_read_deployment(mongo_connection):
     deployments = Deployment.objects.all()
